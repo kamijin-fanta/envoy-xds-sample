@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  dummy_cluster:
+    build: .
+    command: /app/dummy-cluster
+    network_mode: service:proxy
+  xds_service:
+    build: .
+    command: /app/xds-service
+    network_mode: service:proxy
+  proxy:
+    image: envoyproxy/envoy:v1.16.0
+    command: envoy -c /tmp/envoy.yaml
+    volumes:
+      - "./envoy.yaml:/tmp/envoy.yaml:ro"
+    ports:
+      - "8111:8111"
+      - "8123:8123"
+  stress:
+    image: williamyeh/hey
+    command: -n 2000 -c 10 -q 10 -host "app.local" http://proxy:8123
+    restart: always
+  prometheus:
+    image: prom/prometheus:v2.22.0
+    volumes:
+      - "./config/prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+  grafana:
+    image: grafana/grafana:7.3.1
+    volumes:
+      - "./config/grafana-provisioning:/etc/grafana/provisioning"
+      - "./config/grafana-dashboards:/var/lib/grafana/dashboards"
+    ports:
+      - "3000:3000"
+
